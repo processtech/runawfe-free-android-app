@@ -1,0 +1,32 @@
+<androidx.preference.PreferenceScreen xmlns:app="http://schemas.android.com/apk/res-auto">
+
+    <PreferenceCategory
+        app:iconSpaceReserved="false"
+        app:title="@string/notifications_settings">
+
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="disableChannels"
+            app:summary="@string/settings_all_channels_summary"
+            app:title="@string/settings_all_channels"/>
+
+        <ru.runa.wfe.ui.notification.DurationPreference
+            app:iconSpaceReserved="false"
+            app:key="pollingInterval"
+            app:title="@string/check_delay_title" />
+
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="tasksChannel"
+            app:summary="@string/summary_setup_notifications"
+            app:title="@string/tasks_notifications_title" />
+
+        <Preference
+            app:iconSpaceReserved="false"
+            app:key="messagesChannel"
+            app:summary="@string/summary_setup_notifications"
+            app:title="@string/messages_notifications_title" />
+
+    </PreferenceCategory>
+
+</androidx.preference.PreferenceScreen>

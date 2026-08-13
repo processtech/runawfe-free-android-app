@@ -6,5 +6,76 @@
     <string name="back_button_description">Вернуться</string>
     <string name="settings_title">Настройки</string>
     <string name="search_hint">Введите URL</string>
+    <string name="search_button">Сохранить URL</string>
     <string name="update">Обновить</string>
+    <string name="invalid_url">URL не является сервером RunaWFE или недействителен</string>
+    <string name="network_error_url">Из-за проблем с интернетом URL не был проверен</string>
+    <string name="login_suggestion">Вход в аккаунт на сервере</string>
+
+    <string name="logo_description">Логотип RunaWFE</string>
+    <string name="loading">Загрузка…</string>
+
+    <string name="title_activity_login">Вход</string>
+    <string name="prompt_login">Логин</string>
+    <string name="prompt_password">Пароль</string>
+    <string name="button_login">Войти</string>
+    <string name="auth_error">Ошибка аутентификации</string>
+    <string name="empty_form">Заполните обязательные поля</string>
+    <string name="not_found_login">Пользователь не найден</string>
+    <string name="invalid_session">Сессия не валидна</string>
+    <string name="title_activity_notification_permission">Разрешение на показ уведомлений</string>
+    <string name="token_error">Ошибка токена сервера (устарел или не может быть проверен)</string>
+    <string name="server_url_error">Ошибка адреса сервера (не был проверен)</string>
+    <string name="undefined_error">Ошибка</string>
+
+    <string name="notifications_service_title">Сервис уведомлений запущен</string>
+    <string name="notifications_service_message">Уведомления RunaWFE о новых задачах и сообщениях</string>
+    <string name="stop_notification_service">Остановить</string>
+
+    <string name="tasks_channel_description">Уведомления RunaWFE о новых задачах</string>
+    <string name="messages_channel_description">Уведомления RunaWFE о новых сообщениях</string>
+    <plurals name="tasks_count">
+        <item quantity="one">%d задача</item>
+        <item quantity="few">%d задачи</item>
+        <item quantity="many">%d задач</item>
+        <item quantity="other">%d задач</item>
+    </plurals>
+    <plurals name="messages_count">
+        <item quantity="one">%d сообщение</item>
+        <item quantity="few">%d сообщения</item>
+        <item quantity="many">%d сообщений</item>
+        <item quantity="other">%d сообщений</item>
+    </plurals>
+    <plurals name="minutes">
+        <item quantity="one">минута</item>
+        <item quantity="few">минуты</item>
+        <item quantity="many">минут</item>
+        <item quantity="other">мин.</item>
+    </plurals>
+    <string name="new_data_notifications">Hовых:</string>
+    <string name="tasks_channel_title">Новые задачи</string>
+    <string name="messages_channel_title">Новые сообщения</string>
+    <string name="messages_chat_id_template">Чат процесса %d</string>
+    <string name="channel_not_exist">Категория оповещений не существует</string>
+
+    <string name="permission_request_title">Запрос разрешения</string>
+    <string name="permission_notification_need">Для получения оповещений требуются: разрешение (если Android версии 11 и выше), адрес сервера и данные пользователя. Перезагрузите приложение, если все условия выполнены, но этот диалог виден</string>
+    <string name="permission_need">Для работы приложения требуется разрешение</string>
+    <string name="permission_set">Настроить разрешение</string>
+    <string name="permission_given">Разрешение получено</string>
+    <string name="refuse_action">Не сейчас</string>
+
+    <string name="check_delay_title">Интервал проверки</string>
+    <string name="check_delay_help">Часы:минуты\nЗначение 00:00 отключит проверку</string>
+    <string name="tasks_notifications_title">Уведомления для новых задач</string>
+    <string name="messages_notifications_title">Уведомления для новых сообщений</string>
+    <string name="summary_setup_notifications">Нажмите для перехода к настройкам</string>
+    <string name="settings_empty_value_message">Задайте значение</string>
+    <string name="settings_value_error_message">Ошибка при получении значения</string>
+    <string name="settings_all_channels">Категории</string>
+    <string name="settings_all_channels_summary">Включить или отключить все категории уведомлений</string>
+
+    <string name="notifications_settings">Уведомления</string>
+    <string name="url_settings">Адрес сервера</string>
+
 </resources>

@@ -1,13 +1,11 @@
-@file:Suppress("DEPRECATION")
-
 package ru.runa.wfe
 
 import android.app.Activity
 import android.app.Dialog
 import android.os.Bundle
 import androidx.appcompat.app.AlertDialog
-import android.app.DialogFragment
-import android.content.Intent
+import androidx.fragment.app.DialogFragment
+import androidx.navigation.fragment.findNavController
 
 class EmptyURLDialogFragment : DialogFragment() {
     var activityOfMessage: Activity? = null
@@ -20,7 +18,7 @@ class EmptyURLDialogFragment : DialogFragment() {
             builder.setMessage("Адресная строка пустая")
                 .setPositiveButton("ОК") {
                         dialog, id ->
-                    startActivity(Intent(activityOfMessage, SettingsActivity::class.java))
+                    findNavController().navigate(R.id.to_settings)
                     dialog.cancel()
                 }
             builder.create()

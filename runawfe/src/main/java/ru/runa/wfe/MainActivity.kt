@@ -1,185 +1,190 @@
-@file:Suppress("DEPRECATION")
-
 package ru.runa.wfe
 
-import android.annotation.SuppressLint
-import android.app.Activity
-import android.app.DownloadManager
-import android.content.ActivityNotFoundException
+import android.Manifest
 import android.content.Intent
-import android.content.SharedPreferences
-import android.net.http.SslError
+import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
-import android.os.Environment
-import android.os.Handler
-import android.os.Looper
-import android.preference.PreferenceManager
+import android.provider.Settings
 import android.view.View
-import android.webkit.CookieManager
-import android.webkit.SslErrorHandler
-import android.webkit.URLUtil
-import android.webkit.WebSettings
-import android.webkit.WebView
-import android.webkit.WebViewClient
-import android.widget.ImageButton
-import android.widget.LinearLayout
-import android.widget.RelativeLayout
-import android.widget.TextView
-import android.widget.Toast
-import androidx.core.content.edit
-import androidx.core.net.toUri
-import kotlin.math.abs
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.appcompat.app.AlertDialog
+import androidx.appcompat.app.AppCompatActivity
+import androidx.core.app.ActivityCompat
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
+import androidx.navigation.NavController
+import androidx.navigation.NavDestination
+import androidx.navigation.fragment.NavHostFragment
+import androidx.savedstate.SavedState
+import com.google.android.material.snackbar.Snackbar
+import kotlinx.coroutines.launch
+import ru.runa.wfe.data.PreferencesManager
+import ru.runa.wfe.notification.NotificationHelpers
+import ru.runa.wfe.notification.NotificationHelpers.NotificationType
+import ru.runa.wfe.notification.NotificationScheduler
+import ru.runa.wfe.rest.TokenManager
+import ru.runa.wfe.rest.ApiClient
+import ru.runa.wfe.rest.ServerCheckResult
 
+class MainActivity : AppCompatActivity() {
+    private lateinit var preferencesManager: PreferencesManager
+    private var firstRun: Boolean = false
+    private lateinit var rootView: View
 
-class MainActivity : Activity() {
+    private var permissionCallback: ((Boolean) -> Unit)? = null
+    private val requestPermissionLauncher =
+        registerForActivityResult(ActivityResultContracts.RequestPermission()) { isGranted ->
+            permissionCallback?.invoke(isGranted)
+            permissionCallback = null
+        }
+    private var intentCallback: ((Int) -> Unit)? = null
+    private val intentLauncher = registerForActivityResult(
+        ActivityResultContracts.StartActivityForResult()
+    ) { result -> intentCallback?.invoke(result.resultCode)}
 
-    private lateinit var webView: WebView
-    private lateinit var urlField: TextView
-    private lateinit var prefs: SharedPreferences
-    private lateinit var topBar: LinearLayout
-    private lateinit var settingsButton: ImageButton
-
-    @SuppressLint("SetJavaScriptEnabled")
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
-        prefs = PreferenceManager.getDefaultSharedPreferences(this)
+        rootView = findViewById(android.R.id.content)
+        // Are there no files in /data/data/{applicationId}? Then it's the very first app launch
+        firstRun = this.filesDir.listFiles()?.isEmpty() ?: false
+        preferencesManager = PreferencesManager.getInstance(this)
+        setNavigation()
+    }
 
-        val wfURL = prefs.getString("urlQuery", "").toString()
-        urlField = findViewById(R.id.urlField)
-        webView = findViewById(R.id.webview)
-        topBar = findViewById(R.id.topBar)
-        settingsButton = findViewById(R.id.settingsButton)
-        val lastVersion = prefs.getString("last_version", "")
-        val currentVersion: String = BuildConfig.VERSION_NAME
-        if (lastVersion != currentVersion) {
-            webView.clearCache(true)
-            webView.reload()
-            prefs.edit {
-                putString("last_version", currentVersion)
-            }
-        }
-        settingsButton.setOnClickListener {
-            prefs.edit { putString("urlQuery", webView.url) }
-            startActivity(Intent(this, SettingsActivity::class.java))
-        }
-        webView.webViewClient = object : WebViewClient() {
-            @SuppressLint("WebViewClientOnReceivedSslError", "ObsoleteSdkInt")
-            override fun onReceivedSslError(view: WebView, handler: SslErrorHandler, error: SslError) {
-                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.N_MR1) {
-                    handler.proceed()
+    private fun setNavigation() {
+        val navHostFragment =
+            supportFragmentManager.findFragmentById(R.id.nav_host_fragment)
+                    as NavHostFragment
+        val navController = navHostFragment.navController
+
+        // Conditional start screen
+        lifecycleScope.launch {
+            val wfURL = preferencesManager
+                .getValue(PreferencesManager.WEBVIEW_URL, "")
+
+            navController.popBackStack() // Don't return to start fragment
+            if (wfURL.isEmpty()) {
+                navController.navigate(R.id.emptyUrlDialogFragment)
+            } else {
+                val checkServerUrlResult = ApiClient.checkServer(wfURL)
+                if (checkServerUrlResult is ServerCheckResult.Valid) {
+                    ApiClient.setServerUrl(checkServerUrlResult)
+                    val tokenLoadSuccess = TokenManager.loadToken(preferencesManager)
+                    if (tokenLoadSuccess) {
+                        navController.navigate(R.id.mainFragment)
+                    } else {
+                        navController.navigate(R.id.loginFragment)
+                        preferencesManager.deleteKeyValue(PreferencesManager.TOKEN)
+                    }
                 } else {
-                    handler.cancel()
-                }
-            }
-            override fun onPageFinished(view: WebView, url: String) {
-                super.onPageFinished(view, url)
-                urlField.text = webView.url
-                prefs.edit { putString("urlQuery", webView.url) }
-                if (webView.url.isNullOrBlank() || webView.url == "about:blank") {
-                    val emptyURLDialogFragment = EmptyURLDialogFragment()
-                    emptyURLDialogFragment.activityOfMessage = this@MainActivity
-                    emptyURLDialogFragment.show(fragmentManager, "emptyURLDialog")
-                }
-
-            }
-        }
-        webView.setDownloadListener { url, userAgent, contentDisposition, mimeType, contentLength ->
-            val fileName = URLUtil.guessFileName(url, contentDisposition, mimeType)
-            val request = DownloadManager.Request(url.toUri()).apply {
-                setMimeType(mimeType)
-
-                val cookies = CookieManager.getInstance().getCookie(url)
-                if (!cookies.isNullOrEmpty()) {
-                    addRequestHeader("cookie", cookies)
-                }
-                addRequestHeader("User-Agent", userAgent)
-                setDescription("Downloading file...")
-                setTitle(URLUtil.guessFileName(url, contentDisposition, mimeType))
-                allowScanningByMediaScanner()
-                setNotificationVisibility(DownloadManager.Request.VISIBILITY_VISIBLE_NOTIFY_COMPLETED)
-                setDestinationInExternalPublicDir(Environment.DIRECTORY_DOWNLOADS, fileName)
-
-                if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.Q) {
-                    setDestinationInExternalFilesDir(
-                        this@MainActivity,
-                        Environment.DIRECTORY_DOWNLOADS,
-                        URLUtil.guessFileName(url, contentDisposition, mimeType)
-                    )
-                } else {
-                    @Suppress("DEPRECATION")
-                    setDestinationInExternalPublicDir(
-                        Environment.DIRECTORY_DOWNLOADS,
-                        URLUtil.guessFileName(url, contentDisposition, mimeType))
+                    Snackbar.make(rootView, R.string.invalid_url, Snackbar.LENGTH_SHORT).show()
+                    navController.navigate(R.id.settingsFragment)
                 }
             }
 
-            request.setAllowedNetworkTypes(DownloadManager.Request.NETWORK_MOBILE)
-            val downloadManager = getSystemService(DOWNLOAD_SERVICE) as DownloadManager
-            val downloadId = downloadManager.enqueue(request)
-
-            Handler(Looper.getMainLooper()).postDelayed({
-                val cursor = downloadManager.query(DownloadManager.Query().setFilterById(downloadId))
-                if (cursor.moveToFirst()) {
-                    val status = cursor.getInt(abs(cursor.getColumnIndex(DownloadManager.COLUMN_STATUS)))
-                    if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                        val uri = downloadManager.getUriForDownloadedFile(downloadId)
-                        try {
-                            val openIntent = Intent(Intent.ACTION_VIEW).apply {
-                                setDataAndType(uri, mimeType)
-                                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+            navController.addOnDestinationChangedListener(
+                object : NavController.OnDestinationChangedListener {
+                    override fun onDestinationChanged(
+                        controller: NavController,
+                        destination: NavDestination,
+                        arguments: SavedState?
+                    ) {
+                        if (destination.id == R.id.mainFragment) {
+                            val sdkTiramisu = Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU
+                            if (firstRun && sdkTiramisu) {
+                                requestPermission(
+                                    Manifest.permission.POST_NOTIFICATIONS,
+                                    R.string.permission_notification_need
+                                ) { isGranted ->
+                                    if (isGranted) startNotifying()
+                                }
+                            } else {
+                                startNotifying()
                             }
-                            startActivity(openIntent)
-                        } catch (_: ActivityNotFoundException) {
-                            Toast.makeText(this@MainActivity,
-                                "No app found to open this file",
-                                Toast.LENGTH_SHORT).show()
+                            controller.removeOnDestinationChangedListener(this)
                         }
                     }
                 }
-                cursor.close()
-            }, 3000)
-            Toast.makeText(
-                this@MainActivity,
-                "Downloading File",
-                Toast.LENGTH_LONG
-            ).show()
-        }
-
-        val isShowUrl = prefs.getBoolean("showUrl", false)
-        toggleUrlVisibility(isShowUrl)
-
-        val settings: WebSettings = webView.settings
-        settings.javaScriptEnabled = true
-        settings.domStorageEnabled = true
-        settings.useWideViewPort = true
-        settings.loadWithOverviewMode = true
-        settings.builtInZoomControls = true
-        webView.loadUrl(wfURL)
-    }
-
-    @Deprecated("Deprecated in Java")
-    override fun onBackPressed() {
-        if (webView.canGoBack()) {
-            webView.goBack()
-        } else {
-            super.onBackPressed()
+            )
         }
     }
-    private fun toggleUrlVisibility(isVisible: Boolean) {
-        val layoutParams = webView.layoutParams as RelativeLayout.LayoutParams
-        val settingButtonLayoutParams = settingsButton.layoutParams as RelativeLayout.LayoutParams
-        if (isVisible) {
-            topBar.visibility = View.VISIBLE
-            layoutParams.addRule(RelativeLayout.BELOW, topBar.id)
-            settingButtonLayoutParams.topMargin = 96
-            settingsButton.layoutParams = settingButtonLayoutParams
-        } else {
-            topBar.visibility = View.INVISIBLE
-            layoutParams.removeRule(RelativeLayout.BELOW)
-            settingButtonLayoutParams.topMargin = 0
-            settingsButton.layoutParams = settingButtonLayoutParams
+
+    private fun canStartNotification(): Boolean {
+        val channelsEnabled = NotificationHelpers.isChannelEnabled(NotificationType.TASK, this) ||
+                NotificationHelpers.isChannelEnabled(NotificationType.MESSAGE, this)
+        val permissionGranted = (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) ||
+                this.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) == PackageManager.PERMISSION_GRANTED
+        if (!(ApiClient.isApiClientInitialized() && channelsEnabled && permissionGranted)) {
+            return false
         }
+        if (preferencesManager.getValue( PreferencesManager.POLLING_INTERVAL, 0) <= 0) {
+            return false
+        }
+        return true
+    }
+
+    fun startNotifying() {
+        if (canStartNotification()) {
+            NotificationScheduler.start(this)
+        }
+    }
+
+    fun requestPermission(permission: String, explanation: Int?, callback: ((Boolean) -> Unit)?) {
+        // Create custom dialog with explanations
+        val explainDialogBuilder = AlertDialog.Builder(this)
+            .setTitle(R.string.permission_request_title)
+            .setMessage(explanation ?: R.string.permission_need)
+            .setNeutralButton(R.string.refuse_action, null)
+        if (ContextCompat.checkSelfPermission(this, permission) !=
+            PackageManager.PERMISSION_GRANTED
+        ) {
+            if (firstRun || ActivityCompat.shouldShowRequestPermissionRationale(this, permission)) {
+                // Explain and ask permission
+                callback.let { permissionCallback = it }
+                explainDialogBuilder
+                    .setPositiveButton(R.string.permission_set) { _, _ ->
+                        requestPermissionLauncher.launch(permission)
+                    }
+                    .create().show()
+            } else {
+                /*
+                * If the user denied the permission, the system dialog won't appear
+                * Direct user to the app's settings
+                * */
+                intentCallback = {
+                    // Because Android Settings app returns no informative result, re-check the permission state and send to the callback
+                    callback?.invoke(
+                        ContextCompat.checkSelfPermission(
+                            this,
+                            permission
+                        ) == PackageManager.PERMISSION_GRANTED
+                    )
+                }
+                val intent = when (permission) {
+                    Manifest.permission.POST_NOTIFICATIONS -> {
+                        Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS)
+                            .putExtra(Settings.EXTRA_APP_PACKAGE, this.packageName)
+                    }
+
+                    else -> {
+                        Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS)
+                            .setData(Uri.fromParts("package", this.packageName, null))
+                    }
+                }
+                explainDialogBuilder
+                    .setPositiveButton(R.string.permission_set) { _, _ ->
+                        intentLauncher.launch(intent)
+                    }
+                    .create().show()
+            }
+        }
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        NotificationScheduler.stop(this)
     }
 }
