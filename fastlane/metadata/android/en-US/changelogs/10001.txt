@@ -1,0 +1,1 @@
+* Fix bug: files are not downloaded in the mobile application (#github4250)
