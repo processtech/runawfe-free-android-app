@@ -1,5 +1,3 @@
-import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-
 plugins {
     id 'com.android.application'
     id 'org.jetbrains.kotlin.android'
@@ -21,11 +19,20 @@ openApiGenerate {
     configOptions.put("failOnUnknownProperties", "false")
 }
 
+tasks.named("openApiGenerate") {
+    onlyIf("OpenAPI spec exists and is not empty") {
+        def spec = inputSpec.getOrNull()
+        spec != null &&
+                !spec.isEmpty() &&
+                project.file(spec).isFile()
+    }
+}
+
 tasks.register('prepareKotlinBuildScriptModel') {
 
 }
 
-tasks.withType(KotlinCompile).configureEach {
+tasks.withType(org.jetbrains.kotlin.gradle.tasks.KotlinCompile).configureEach {
     dependsOn('openApiGenerate')
 }
 
