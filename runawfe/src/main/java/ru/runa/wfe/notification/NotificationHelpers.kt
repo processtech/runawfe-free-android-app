@@ -13,10 +13,10 @@ import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
 import ru.runa.wfe.MainActivity
 import ru.runa.wfe.R
+import java.util.concurrent.atomic.AtomicInteger
 
 class NotificationHelpers(private val context: Context) {
     private val notificationManager = NotificationManagerCompat.from(context)
-    private var notificationIdCounter = 2000 // To prevent id conflicts with other notifications
 
     fun createNotificationChannels() {
         if (notificationManager.areNotificationsEnabled()) {
@@ -57,7 +57,11 @@ class NotificationHelpers(private val context: Context) {
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) PendingIntent.FLAG_IMMUTABLE else 0
             )
             val notification = buildNotification(type, message, title, pendingIntent)
-            notificationManager.notify(type.channelId, notificationIdCounter++, notification)
+            notificationManager.notify(
+                type.channelId,
+                notificationIdCounter.getAndIncrement(),
+                notification
+            )
         }
     }
 
@@ -104,6 +108,9 @@ class NotificationHelpers(private val context: Context) {
     }
 
     companion object {
+        private val notificationIdCounter =
+            AtomicInteger(2000) // To prevent id conflicts with other notifications
+
         fun channelExists(type: NotificationType, context: Context): Boolean {
             return (context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager)
                 .getNotificationChannel(type.channelId) != null

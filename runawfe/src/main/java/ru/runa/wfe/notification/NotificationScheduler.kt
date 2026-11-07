@@ -13,6 +13,8 @@ import androidx.work.WorkManager
 import androidx.work.workDataOf
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.launch
 import ru.runa.wfe.data.PreferencesManager
@@ -20,6 +22,7 @@ import ru.runa.wfe.ui.notification.DurationPreference
 import java.time.OffsetDateTime
 import java.time.ZoneOffset
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicLong
 
 object NotificationScheduler {
     const val NOTIFICATION_SERVICE_ID = 1
@@ -30,13 +33,18 @@ object NotificationScheduler {
         .setRequiredNetworkType(NetworkType.CONNECTED)
         .setRequiresDeviceIdle(false)
         .build()
-    private var pollingInterval: Long = DurationPreference.DEFAULT
-    private var fastCheck: Boolean = false
+    private val notificationSchedulesScope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private val pollingInterval: AtomicLong = AtomicLong(DurationPreference.DEFAULT)
+    private val fastCheck: Boolean
+        get() = pollingInterval.get() < (15 * 60)
+    @Volatile
+    private var schedulerJob: Job? = null
 
     fun start(context: Context) {
         val preferencesManager = PreferencesManager.getInstance(context)
         // DataStore uses Dispatchers.IO, this coroutine dispatcher won't change it
-        CoroutineScope(Dispatchers.Default).launch {
+        stop(context)
+        schedulerJob = notificationSchedulesScope.launch {
             val lastCheck = OffsetDateTime.parse(
                 preferencesManager.getValue(
                     PreferencesManager.LAST_CHECK,
@@ -48,18 +56,18 @@ object NotificationScheduler {
 
             preferencesManager.getValueFlow(
                 PreferencesManager.POLLING_INTERVAL,
-                pollingInterval
+                pollingInterval.get()
             ).collectLatest { value ->
-                pollingInterval = value
+                pollingInterval.set(value)
                 /*
                 The value is nonzero initially (checked in MainActivity)
                 stopSelf() should be called only after service start
                 */
-                if (pollingInterval == 0L) {
+                if (value == 0L) {
                     stop(context)
                 } else {
-                    fastCheck = pollingInterval < (15 * 60)
-                    if (fastCheck) {
+                    val fastCheckMode = value < (15 * 60)
+                    if (fastCheckMode) {
                         WorkManager.getInstance(context)
                             .cancelUniqueWork(NORMAL_NOTIFICATION_CHECK_WORK_NAME)
                     } else {
@@ -80,6 +88,8 @@ object NotificationScheduler {
     }
 
     fun stop(context: Context) {
+        schedulerJob?.cancel()
+        schedulerJob = null
         CoroutineScope(Dispatchers.IO).launch {
             PreferencesManager.getInstance(context).setKey(
                 PreferencesManager.LAST_CHECK,
@@ -95,7 +105,7 @@ object NotificationScheduler {
         if (fastCheck) {
             val oneTimeRequest = OneTimeWorkRequestBuilder<NotificationWorker>()
                 .setInputData(workDataOf("fastCheck" to true))
-                .setInitialDelay(pollingInterval, TimeUnit.SECONDS)
+                .setInitialDelay(pollingInterval.get(), TimeUnit.SECONDS)
                 .setConstraints(constraints)
                 .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, 30, TimeUnit.SECONDS)
                 // This will turn ForegroundService mode. It works only with OneTimeWorkRequest
@@ -109,7 +119,7 @@ object NotificationScheduler {
         } else {
             val periodicRequest = PeriodicWorkRequestBuilder<NotificationWorker>(
                 // Repeat interval
-                pollingInterval, TimeUnit.MILLISECONDS,
+                pollingInterval.get(), TimeUnit.MILLISECONDS,
                 // How long can the work take (will wait this time before start next repeat)
                 FLEX_INTERVAL, TimeUnit.MILLISECONDS
             )
