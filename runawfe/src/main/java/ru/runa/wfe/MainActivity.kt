@@ -69,34 +69,6 @@ class MainActivity : AppCompatActivity() {
                     as NavHostFragment
         val navController = navHostFragment.navController
         navController.popBackStack() // Don't return to start fragment
-        // Conditional start screen
-        lifecycleScope.launch {
-            val wfUrl = preferencesViewModel.wfUrl.filterNotNull().first()
-            if (wfUrl.isBlank()) {
-                navController.navigate(R.id.emptyUrlDialogFragment)
-            } else {
-                val checkServerUrlResult = ApiClient.checkServer(wfUrl)
-                if (checkServerUrlResult is ServerCheckResult.Valid) {
-                    ApiClient.setServerUrl(checkServerUrlResult)
-                    val tokenLoadSuccess = TokenManager.loadToken(preferencesManager)
-                    if (tokenLoadSuccess) {
-                        navController.navigate(R.id.mainFragment)
-                    } else {
-                        navController.navigate(R.id.loginFragment)
-                        preferencesManager.deleteKeyValue(PreferencesManager.TOKEN)
-                    }
-                } else {
-                    Snackbar.make(
-                        rootView,
-                        if (checkServerUrlResult is ServerCheckResult.Invalid)
-                            R.string.invalid_url
-                        else R.string.network_error_url,
-                        Snackbar.LENGTH_SHORT
-                    ).show()
-                    navController.navigate(R.id.settingsFragment)
-                }
-            }
-        }
 
         navController.addOnDestinationChangedListener(
             object : NavController.OnDestinationChangedListener {
@@ -122,6 +94,36 @@ class MainActivity : AppCompatActivity() {
                 }
             }
         )
+
+        // Conditional start screen
+        lifecycleScope.launch {
+            val wfUrl = preferencesViewModel.wfUrl.filterNotNull().first()
+            if (wfUrl.isBlank()) {
+                navController.navigate(R.id.emptyUrlDialogFragment)
+                return@launch
+            }
+            val checkServerUrlResult = ApiClient.checkServer(wfUrl)
+            if (checkServerUrlResult is ServerCheckResult.Valid) {
+                ApiClient.setServerUrl(checkServerUrlResult)
+                val tokenLoadSuccess = TokenManager.loadToken(preferencesManager)
+                if (tokenLoadSuccess) {
+                    navController.navigate(R.id.mainFragment)
+                } else {
+                    navController.navigate(R.id.loginFragment)
+                    preferencesManager.deleteKeyValue(PreferencesManager.TOKEN)
+                }
+                return@launch
+            }
+            // If url is not valid
+            Snackbar.make(
+                rootView,
+                if (checkServerUrlResult is ServerCheckResult.Invalid)
+                    R.string.invalid_url
+                else R.string.network_error_url,
+                Snackbar.LENGTH_SHORT
+            ).show()
+            navController.navigate(R.id.settingsFragment)
+        }
     }
 
     private fun canStartNotification(): Boolean {

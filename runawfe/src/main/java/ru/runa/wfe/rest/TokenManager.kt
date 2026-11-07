@@ -2,6 +2,8 @@ package ru.runa.wfe.rest
 
 import android.util.Log
 import com.google.gson.JsonParser
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import ru.runa.wfe.R
 import ru.runa.wfe.data.PreferencesManager
 import ru.runa.wfe.restapi.model.WfeCredentials
@@ -49,21 +51,21 @@ object TokenManager {
         return false
     }
 
-    suspend fun loadToken(preferencesManager: PreferencesManager): Boolean {
+    suspend fun loadToken(preferencesManager: PreferencesManager): Boolean = withContext(Dispatchers.IO) {
         try {
             val loadedToken = preferencesManager
                 .getSecureValue(PreferencesManager.TOKEN, String::class.java)
             loadedToken?.let {
                 if (checkToken(it)) {
-                    this.token = loadedToken
-                    return true
+                    token = loadedToken
+                    return@withContext true
                 }
-                return false
+                return@withContext false
             } ?: false
         } catch (ex: Exception) {
             Log.e(this.javaClass.simpleName, ex.message.toString())
         }
-        return false
+        return@withContext false
     }
 
     suspend fun requestToken(credentials: WfeCredentials): LoginResult {
