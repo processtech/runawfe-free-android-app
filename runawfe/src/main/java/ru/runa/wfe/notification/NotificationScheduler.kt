@@ -37,6 +37,7 @@ object NotificationScheduler {
     private val pollingInterval: AtomicLong = AtomicLong(DurationPreference.DEFAULT)
     private val fastCheck: Boolean
         get() = pollingInterval.get() < (15 * 60)
+
     @Volatile
     private var schedulerJob: Job? = null
 

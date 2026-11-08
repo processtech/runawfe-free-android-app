@@ -23,7 +23,7 @@ class LoginFragment : Fragment(R.layout.login_fragment) {
     private lateinit var preferencesManager: PreferencesManager
 
     override fun onViewCreated(view: View, savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
+        super.onViewCreated(view, savedInstanceState)
         preferencesManager = PreferencesManager.getInstance(view.context)
         val login: EditText = view.findViewById(R.id.login)
         val password: EditText = view.findViewById(R.id.password)
@@ -58,7 +58,6 @@ class LoginFragment : Fragment(R.layout.login_fragment) {
         loginViewModel.login(loginValue, passwordValue) { loginResult ->
             if (loginResult.success) {
                 saveToken()
-                findNavController().popBackStack()
                 val credentialsBundle = Bundle()
                 credentialsBundle.putString("login", loginValue)
                 credentialsBundle.putString("password", passwordValue)
@@ -84,7 +83,6 @@ class LoginFragment : Fragment(R.layout.login_fragment) {
                 PreferencesManager.TOKEN,
                 TokenManager.token
             )
-            TokenManager.clearToken()
         }
     }
 }

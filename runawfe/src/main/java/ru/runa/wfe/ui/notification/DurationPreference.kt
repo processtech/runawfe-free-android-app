@@ -10,7 +10,6 @@ class DurationPreference(
     attrs: AttributeSet?
 ) : DialogPreference(context, attrs) {
     var duration: Long = DEFAULT
-        get() = field
         set(value) {
             field = value
             persistLong(value)

@@ -4,12 +4,13 @@ import okhttp3.Interceptor
 import okhttp3.Response
 
 class ApiInterceptor : Interceptor {
-    // TODO: automatic token request when there's no token / token is expired
     override fun intercept(chain: Interceptor.Chain): Response {
-        val modifiedRequest = chain.request().newBuilder()
-            .addHeader("Content-Type", "application/json")
-            .addHeader("Authorization", "Bearer ${TokenManager.token}")
-            .build()
-        return chain.proceed(modifiedRequest)
+        val request = chain.request().newBuilder()
+        if (TokenManager.token.isNotBlank()) {
+            request
+                .header("Content-Type", "application/json")
+                .header("Authorization", "Bearer ${TokenManager.token}")
+        }
+        return chain.proceed(request.build())
     }
 }

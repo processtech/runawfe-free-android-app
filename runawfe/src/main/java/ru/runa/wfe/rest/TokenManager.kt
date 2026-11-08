@@ -18,6 +18,9 @@ object TokenManager {
 
     fun clearToken() {
         token = ""
+    }
+
+    fun clearSub() {
         sub = ""
     }
 
@@ -47,29 +50,31 @@ object TokenManager {
 
     private fun checkToken(token: String = this.token): Boolean {
         if (token.isNotEmpty()) {
-            val payload = getTokenPayloadString(token)
-            return (payload.isNotBlank() || payload.isNotEmpty())
-                    && checkExpirationAndSetSub(payload)
+            return checkExpirationAndSetSub(getTokenPayloadString(token))
         }
         return false
     }
 
-    suspend fun loadToken(preferencesManager: PreferencesManager): Boolean = withContext(Dispatchers.IO) {
-        try {
-            val loadedToken = preferencesManager
-                .getSecureValue(PreferencesManager.TOKEN, String::class.java)
-            loadedToken?.let {
-                if (checkToken(it)) {
-                    token = loadedToken
-                    return@withContext true
-                }
-                return@withContext false
-            } ?: false
-        } catch (ex: Exception) {
-            Log.e(this.javaClass.simpleName, ex.message.toString())
+    suspend fun loadToken(preferencesManager: PreferencesManager): Boolean =
+        withContext(Dispatchers.IO) {
+            try {
+                val loadedToken = preferencesManager
+                    .getSecureValue(PreferencesManager.TOKEN, String::class.java)
+                loadedToken?.let {
+                    if (checkToken(it)) {
+                        token = loadedToken
+                        return@withContext true
+                    } else {
+                        clearSub()
+                        clearToken()
+                    }
+                    return@withContext false
+                } ?: false
+            } catch (ex: Exception) {
+                Log.e(this.javaClass.simpleName, ex.message.toString())
+            }
+            return@withContext false
         }
-        return@withContext false
-    }
 
     suspend fun requestToken(credentials: WfeCredentials): LoginResult {
         return try {

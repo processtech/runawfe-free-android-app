@@ -16,8 +16,7 @@ class EmptyURLDialogFragment : DialogFragment() {
             val builder = AlertDialog.Builder(it)
             builder.setTitle("Введите адрес")
             builder.setMessage("Адресная строка пустая")
-                .setPositiveButton("ОК") {
-                        dialog, id ->
+                .setPositiveButton("ОК") { dialog, id ->
                     findNavController().navigate(R.id.to_settings)
                     dialog.cancel()
                 }

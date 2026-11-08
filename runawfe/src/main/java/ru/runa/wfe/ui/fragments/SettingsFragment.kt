@@ -169,7 +169,7 @@ class SettingsFragment : Fragment(R.layout.settings_fragment) {
             ApiClient.setServerUrl(ServerCheckResult.Valid(originChangeUrl))
             previousUrl = changeUrl
         } else {
-            lifecycleScope.launch {
+            viewLifecycleOwner.lifecycleScope.launch {
                 val checkServerUrlResult: ServerCheckResult = ApiClient.checkServer(changeUrl)
                 if (checkServerUrlResult is ServerCheckResult.Valid) {
                     ApiClient.setServerUrl(checkServerUrlResult)

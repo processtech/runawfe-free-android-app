@@ -115,20 +115,22 @@ object ApiClient {
                 .url("${clearBaseUrl}/wfe/version")
                 .get()
                 .build()
-            val response = OkHttpClient.Builder()
+            return@withContext OkHttpClient.Builder()
                 .connectTimeout(3, TimeUnit.SECONDS)
                 .build()
                 .newCall(versionRequest)
                 .execute()
-            return@withContext if (!response.isSuccessful) {
-                Log.e(this::class.simpleName, "Failed server check: ${response.code}")
-                ServerCheckResult.Invalid
-            } else if (response.body?.string().isNullOrBlank()) {
-                Log.e(this::class.simpleName, "Failed server check: empty response")
-                ServerCheckResult.Invalid
-            } else {
-                ServerCheckResult.Valid(clearBaseUrl)
-            }
+                .use { response ->
+                    if (!response.isSuccessful) {
+                        Log.e(this::class.simpleName, "Failed server check: ${response.code}")
+                        ServerCheckResult.Invalid
+                    } else if (response.body?.string().isNullOrBlank()) {
+                        Log.e(this::class.simpleName, "Failed server check: empty response")
+                        ServerCheckResult.Invalid
+                    } else {
+                        ServerCheckResult.Valid(clearBaseUrl)
+                    }
+                }
         } catch (ex: Exception) {
             when (ex) {
                 is SocketTimeoutException, is IOException -> {

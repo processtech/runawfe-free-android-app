@@ -10,7 +10,7 @@ import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
 import java.time.format.DateTimeParseException
 
-class CreationDateDeserializer: StdDeserializer<OffsetDateTime>(OffsetDateTime::class.java)  {
+class CreationDateDeserializer : StdDeserializer<OffsetDateTime>(OffsetDateTime::class.java) {
     private val dateFormatter = DateTimeFormatter.ofPattern("dd.MM.yyyy HH:mm")
         .withZone(ZoneOffset.UTC)
 

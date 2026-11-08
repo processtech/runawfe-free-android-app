@@ -41,6 +41,7 @@ import ru.runa.wfe.data.PreferencesManager
 import ru.runa.wfe.data.PreferencesViewModel
 import ru.runa.wfe.rest.ApiClient
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 class WebFragment : Fragment(R.layout.web_fragment) {
     private lateinit var preferencesManager: PreferencesManager
@@ -240,7 +241,8 @@ class WebFragment : Fragment(R.layout.web_fragment) {
         if (isVisible) {
             topBar.visibility = View.VISIBLE
             layoutParams.addRule(RelativeLayout.BELOW, topBar.id)
-            settingButtonLayoutParams.topMargin = 96
+            settingButtonLayoutParams.topMargin =
+                (96 * resources.displayMetrics.density).roundToInt()
             settingsButton.layoutParams = settingButtonLayoutParams
         } else {
             topBar.visibility = View.INVISIBLE

@@ -88,7 +88,7 @@ class NotificationSettingsFragment : PreferenceFragmentCompat() {
     }
 
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    private fun showPostNotificationPermissionRequest(type: NotificationType) {
+    private fun showPostNotificationPermissionRequest(channelType: NotificationType) {
         val activity: MainActivity? = (activity as? MainActivity)
         activity?.requestPermission(
             Manifest.permission.POST_NOTIFICATIONS,
@@ -96,7 +96,7 @@ class NotificationSettingsFragment : PreferenceFragmentCompat() {
         ) { isGranted ->
             if (isGranted) {
                 activity.startNotifying()
-                showNotificationChannelSettingsOreo(type)
+                showNotificationChannelSettings(channelType)
             }
         }
     }
@@ -127,7 +127,7 @@ class NotificationSettingsFragment : PreferenceFragmentCompat() {
                     explainDialogBuilder.create().show()
                 }
             } else {
-                showNotificationChannelSettingsOreo(channelType)
+                showNotificationChannelSettings(channelType)
             }
         } else if (preference.key == "disableChannels") {
             val intent = Intent()
@@ -138,7 +138,7 @@ class NotificationSettingsFragment : PreferenceFragmentCompat() {
         return super.onPreferenceTreeClick(preference)
     }
 
-    private fun showNotificationChannelSettingsOreo(type: NotificationType) {
+    private fun showNotificationChannelSettings(type: NotificationType) {
         val intent = Intent()
             .setAction(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS)
             .putExtra(Settings.EXTRA_APP_PACKAGE, context?.packageName)
