@@ -10,13 +10,12 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
-import com.google.gson.Gson
-import com.google.gson.GsonBuilder
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import ru.runa.wfe.rest.ApiClient
 
 private const val PREFERENCES_NAME = "app_preferences"
 private const val PREFERENCES_SUFFIX = "_preferences"
@@ -29,7 +28,6 @@ val Context.dataStore by preferencesDataStore(
 )
 
 class PreferencesManager private constructor(private val context: Context) {
-    private val gson: Gson = GsonBuilder().create()
     private val keystoreManager = KeyStoreManager(context)
 
     suspend fun <T> setKey(key: Preferences.Key<T>, value: T) {
@@ -60,7 +58,10 @@ class PreferencesManager private constructor(private val context: Context) {
     suspend fun <T> getSecureValue(key: Preferences.Key<T>, type: Class<T>): T? {
         try {
             val encryptedValue = context.dataStore.data.first()[key]
-            return gson.fromJson(keystoreManager.decrypt(encryptedValue.toString()), type)
+            return if (encryptedValue != null) {
+                val decrypted = keystoreManager.decrypt(encryptedValue.toString())
+                ApiClient.mapper.readValue(ApiClient.mapper.writeValueAsString(decrypted), type)
+            } else null
         } catch (ex: Exception) {
             Log.e(this.javaClass.simpleName, ex.message.toString())
         }

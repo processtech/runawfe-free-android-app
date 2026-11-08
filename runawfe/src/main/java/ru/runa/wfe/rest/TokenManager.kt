@@ -1,9 +1,9 @@
 package ru.runa.wfe.rest
 
 import android.util.Log
-import com.google.gson.JsonParser
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import org.json.JSONObject
 import ru.runa.wfe.R
 import ru.runa.wfe.data.PreferencesManager
 import ru.runa.wfe.restapi.model.WfeCredentials
@@ -29,13 +29,16 @@ object TokenManager {
     }
 
     private fun checkExpirationAndSetSub(payload: String): Boolean {
-        val jsonPayload = JsonParser.parseString(payload).asJsonObject
-        val expiration = jsonPayload.get("exp")
-        if (expiration != null) {
+        val jsonPayload = JSONObject(payload)
+        val expiration = jsonPayload.optString("exp")
+        if (expiration.isNotBlank()) {
             val currentTime = Instant.now().epochSecond
             val expirationTime = expiration.toString().toLongOrNull()
             if (expirationTime != null && expirationTime > currentTime) {
-                jsonPayload.get("sub")?.let { sub = it.asString }
+                val subValue = jsonPayload.optString("sub")
+                if (subValue.isNotBlank()) {
+                    sub = subValue
+                }
                 return true
             }
         }

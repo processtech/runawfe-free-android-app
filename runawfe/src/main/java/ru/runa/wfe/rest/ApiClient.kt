@@ -13,7 +13,6 @@ import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import retrofit2.converter.jackson.JacksonConverterFactory
 import retrofit2.converter.scalars.ScalarsConverterFactory
 import ru.runa.wfe.restapi.client.AuthControllerApi
@@ -48,14 +47,14 @@ object ApiClient {
             .client(okHttpClientBuilder.build())
             // Jackson doesn't work well with text/plain responses
             .addConverterFactory(ScalarsConverterFactory.create())
-            .addConverterFactory(GsonConverterFactory.create())
+            .addConverterFactory(JacksonConverterFactory.create())
             .build()
             .create(AuthControllerApi::class.java)
 
     private val okHttpClientBuilder = OkHttpClient.Builder()
         .callTimeout(1, TimeUnit.MINUTES)
 
-    private val mapper = ObjectMapper()
+    val mapper: ObjectMapper = ObjectMapper()
         .disable(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
         .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false)
         .registerModules(JavaTimeModule())
